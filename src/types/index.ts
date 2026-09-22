@@ -1,10 +1,21 @@
 export type WorkflowStatus='draft'|'published'|'archived';
 export type NodeKind='start'|'form'|'approval'|'condition'|'automation'|'notify'|'end';
-export type NodeState='unconfigured'|'configuring'|'valid'|'invalid';
-export interface FormField {id:string;label:string;type:'text'|'number'|'amount'|'date'|'select'|'attachment';required:boolean;options?:string[]}
-export interface FlowNode {id:string;type:NodeKind;position:{x:number;y:number};data:{label:string;state:NodeState;config:Record<string,any>}}
-export interface FlowEdge {id:string;source:string;target:string;label?:string}
-export interface Version {version:number;createdAt:string;note:string;nodes:FlowNode[];edges:FlowEdge[]}
-export interface Workflow {id:string;name:string;domain:string;status:WorkflowStatus;version:number;editor:string;updatedAt:string;publishedAt?:string;abnormalCount:number;nodes:FlowNode[];edges:FlowEdge[];versions:Version[]}
-export interface Instance {id:string;workflowId:string;applicant:string;domain:string;currentNode:string;status:'abnormal'|'timeout'|'running'|'completed';submittedAt:string;duration:string;risk:'high'|'medium'|'low';timeline:{title:string;time:string;status:string}[]}
-export interface ValidationIssue {nodeId:string;level:'error'|'warning';message:string}
+/** invalid=结构/配置错误；pendingFix=引用的表单字段已失效，等待人工修复 */
+export type NodeState='unconfigured'|'configuring'|'valid'|'invalid'|'pendingFix';
+export type FieldType='text'|'number'|'amount'|'date'|'select'|'attachment';
+export interface FormField{id:string;label:string;type:FieldType;required:boolean;options?:string[]}
+/** 条件节点引用的字段失效时留存的档案，用于“待修复”提示与发布拒绝报告 */
+export interface BrokenFieldRef{fieldId:string;fieldLabel:string;reason:'removed'|'typeChanged';oldType:FieldType;newType:FieldType|null;since:string}
+export interface FlowNode{id:string;type:NodeKind;position:{x:number;y:number};data:{label:string;state:NodeState;config:Record<string,any>}}
+export interface FlowEdge{id:string;source:string;target:string;label?:string}
+/** 发布时冻结的表单字段快照：已发布版本永远沿用当时的字段 */
+export interface FieldSnapshot{version:number;frozenAt:string;fields:FormField[]}
+export interface Version{version:number;createdAt:string;note:string;nodes:FlowNode[];edges:FlowEdge[];fieldSnapshot?:FieldSnapshot}
+/** 最近一次通过校验的草稿快照，预览只读展示它 */
+export interface LastValid{at:string;nodes:FlowNode[];edges:FlowEdge[];fields:FormField[]}
+export interface Workflow{id:string;name:string;domain:string;status:WorkflowStatus;version:number;editor:string;updatedAt:string;publishedAt?:string;abnormalCount:number;nodes:FlowNode[];edges:FlowEdge[];versions:Version[];lastValid?:LastValid}
+export interface Instance{id:string;workflowId:string;applicant:string;domain:string;currentNode:string;status:'abnormal'|'timeout'|'running'|'completed';submittedAt:string;duration:string;risk:'high'|'medium'|'low';flowVersion:number;formData:Record<string,string>;timeline:{title:string;time:string;status:string}[]}
+export interface ValidationIssue{nodeId:string;level:'error'|'warning';message:string}
+/** 发布拒绝报告中的一行：流程 / 字段 / 节点 / 旧值 / 新值 */
+export interface PublishRejectRow{workflowId:string;workflowName:string;nodeId:string;nodeLabel:string;fieldId:string;fieldLabel:string;reason:string;oldValue:string;newValue:string}
+export interface PublishResult{ok:boolean;rows:PublishRejectRow[];published:string[]}
